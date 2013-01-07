@@ -18,7 +18,8 @@ sub new {
   $self->{dir} = App::Unliner::Util::get_temp_dir();
 
   if ($ENV{UNLINER_DEBUG}) {
-    print STDERR "TMP: $self->{dir}\n";
+    print STDERR "unliner: TMP: $self->{dir}\n";
+    print STDERR "unliner: TMP: Not cleaning up temp directory because UNLINER_DEBUG specified\n";
   }
 
   my $prev_sigint = $SIG{INT};
@@ -40,8 +41,14 @@ sub compile_file {
 
   # Load file
 
-  open(my $fh, '<', $filename)
-    || die "couldn't read unliner script '$filename': $!";
+  my $fh;
+
+  if (ref $filename eq 'GLOB') {
+    $fh = $filename;
+  } else {
+    open($fh, '<', $filename)
+      || die "couldn't read unliner script '$filename': $!";
+  }
 
   my $file_contents = do { local $/; <$fh> };
 

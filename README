@@ -71,8 +71,11 @@ Introduction to Unliner
 
         $ unliner log-report
 
-    You could also put a <shebang line> at the top of your script, "chmod
-    +x" it and run it directly.
+    You could also put a <shebang line> at the top of your script:
+
+        #!/usr/bin/env unliner
+
+    Now if you "chmod +x log-report" you can run it directly.
 
   Defs
     The "def main { }" isn't a special type of def except that it happens to
@@ -142,8 +145,8 @@ Introduction to Unliner
 
         $ unliner log-report access.log -h 5
 
-    However, if you forget to add an h argument, the head process will die
-    with an error like "head: : invalid number of lines".
+    However, if you forget to add one of these arguments, the head process
+    will die with an error like "head: : invalid number of lines".
 
     In order to have a default value for a paramater, you put parentheses
     around the argument definition followed by the default value (precedent:
@@ -154,6 +157,9 @@ Introduction to Unliner
         }
 
     Environment variables are also available so $HOME and such will work.
+
+    None of these variables need to be quoted. They are always passed
+    verbatim to the underlying command.
 
     Defs internal to your program accept arguments in exactly the same way:
 
@@ -167,13 +173,22 @@ Introduction to Unliner
 
   Def Modifiers
     The contents of all the defs we've seen so far are in a custom unliner
-    language called sh which is mostly like bourne shell/bash but a little
-    bit different (differences are explained here FIXME).
+    language called Shell. ": sh" is redundant because Shell is the default
+    language.
 
-    However, def modifiers can be used to change how the def body is
-    interpreted. Modifiers go in between the def name/prototype and the
-    body. One language modifier that can be used is "perl". It causes the
-    def body to be interpreted as perl code. For example:
+    Shell is mostly like bourne shell/bash but a little bit different. The
+    differences are described in the distribution's TODO file. Some
+    differences are deliberate and some are just features that haven't been
+    implemented yet. One difference is that unliner uses perl-style
+    backslashed single quotes in single quoted string literals, not bourne
+    shell-style (if you don't know what the bourne shell-style is, consider
+    yourself lucky).
+
+    Def modifiers can be used to change how the def body is interpreted by
+    changing the language to something other than Shell. Modifiers go in
+    between the def name/prototype and the body. One language modifier that
+    can be used is "perl". It causes the def body to be interpreted as perl
+    code. For example:
 
         def body-size-extractor : perl {
           while (<STDIN>) {
@@ -190,8 +205,8 @@ Introduction to Unliner
         }
 
     Def modifiers themselves sometimes take arguments. For example, perl
-    defs can take the "-n" switch which implicitly adds a while loop (just
-    like the perl binary):
+    defs can take the "-n" switch which implicitly adds a loop (just like
+    the perl binary):
 
         def body-size-extractor : perl -n {
           print "$1\n" if /(\d+)$/;
@@ -208,7 +223,7 @@ Introduction to Unliner
         }
 
     Note that python is very noisy when it receives a SIGPIPE so polite
-    pipeline components should catch it and then exit.
+    pipeline components should manually catch it and then exit silently.
 
     Github pull requests for new languages appreciated.
 
@@ -266,8 +281,9 @@ Introduction to Unliner
     to standard error:
 
         $ UNLINER_DEBUG=1 unliner log-report access.log --filter-localhost
-        TMP: /tmp/GPtXapOfib
-        CMD: grep 'GET /report.cgi' access.log | perl /tmp/GPtXapOfib/56ba8ad7a6431cbe6b64835c97e248d27a4234a0 | sort | uniq -c | sort -rn | head -n 5
+        unliner: TMP: /tmp/GPtXapOfib
+        unliner: TMP: Not cleaning up temp directory because UNLINER_DEBUG specified
+        unliner: CMD: grep 'GET /report.cgi' access.log | perl /tmp/GPtXapOfib/56ba8ad7a6431cbe6b64835c97e248d27a4234a0 | sort | uniq -c | sort -rn | head -n 5
 
     Note that when you write defs in languages like perl and python, scripts
     will be created in a temporary directory and executed from there.
