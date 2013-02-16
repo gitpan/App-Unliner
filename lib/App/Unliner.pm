@@ -2,7 +2,7 @@ package App::Unliner;
 
 use common::sense;
 
-our $VERSION = '0.009';
+our $VERSION = '0.010';
 
 1;
 
@@ -14,9 +14,9 @@ App::Unliner - Untangle your unix pipeline one-liners
 
 =head1 SYNOPSIS
 
-B<Note>: This page is a high-level overview of unliner. For a introduction and manual, see L<App::Unliner::Intro>.
+B<Note>: This page is a high-level overview of unliner. For an introduction and manual, see L<App::Unliner::Intro>.
 
-Simplest way to install unliner is with cpanminus:
+The simplest way to install unliner is with cpanminus:
 
     curl -sL https://raw.github.com/miyagawa/cpanminus/master/cpanm | sudo perl - App::Unliner
 
@@ -63,6 +63,6 @@ Doug Hoyte, C<< <doug@hcsw.org> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012 Doug Hoyte.
+Copyright 2012-2013 Doug Hoyte.
 
 This module is licensed under the same terms as perl itself.

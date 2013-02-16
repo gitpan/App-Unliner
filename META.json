@@ -34,6 +34,7 @@
          "requires" : {
             "Digest::SHA1" : 0,
             "Getopt::Long" : 0,
+            "Pod::Perldoc" : 0,
             "Regexp::Grammars" : 0,
             "Template" : 0,
             "common::sense" : 0
@@ -49,5 +50,5 @@
          "url" : "git://github.com/hoytech/unliner.git"
       }
    },
-   "version" : "0.009"
+   "version" : "0.010"
 }

@@ -230,7 +230,7 @@ Introduction to Unliner
     instance, the following defs are equivalent:
 
         def second-column {
-          awk -F '{ print $2 }'
+          awk -F, '{ print $2 }'
         }
 
         def second-column : exec awk -F, -f {
