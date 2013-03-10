@@ -79,9 +79,9 @@ Introduction to Unliner
 
   Defs
     The "def main { }" isn't a special type of def except that it happens to
-    be what is called when your program is invoked. You can create other
-    defs and they can be invoked by your main def and other defs, kind of
-    like subroutines (name precedent for def: CL, Python).
+    be what is called when your program is invoked (precedent: C). You can
+    create other defs and they can be invoked by your main def and other
+    defs, kind of like subroutines (name precedent for def: lisp, Python).
 
     For example, we could move the "awk" command into a "ip-extractor" def,
     and the tallying logic into a "tally" def:
@@ -296,11 +296,51 @@ Introduction to Unliner
     environment variable "UNLINER_DEBUG" and it will print some information
     to standard error:
 
-        $ UNLINER_DEBUG=1 unliner log-report access.log --filter-localhost
-        unliner: TMP: /tmp/GPtXapOfib
-        unliner: TMP: Not cleaning up temp directory because UNLINER_DEBUG specified
+        $ UNLINER_DEBUG=2 unliner log-report access.log --filter-localhost
+        unliner: TMP: Not cleaning up temp directory /tmp/GPtXapOfib because UNLINER_DEBUG >= 2
         unliner: CMD: grep 'GET /report.cgi' access.log | perl /tmp/GPtXapOfib/56ba8ad7a6431cbe6b64835c97e248d27a4234a0 | sort | uniq -c | sort -rn | head -n 5
 
     Note that when you write defs in languages like perl and python, scripts
     will be created in a temporary directory and executed from there.
+
+  Optimisation
+    Unliner does pipeline optimisation by default. Currently only spurious
+    cat processes are optimised away.
+
+    *   Leading cats
+
+        If a pipeline begins with a cat of no arguments, that cat is removed
+        and no cat process is created. If a pipeline begins with a cat of
+        exactly one argument, then that file is opened and dup2()ed to
+        STDIN.
+
+    *   Trailing cats
+
+        If a pipeline ends with a trailing cat, that cat is removed unless
+        STDOUT is a terminal. Trailing cats are useful to prevent a program
+        from doing special terminal formatting things like adding ANSI
+        colours.
+
+    *   Internal cats
+
+        All internal cats with no arguments are removed. Such cats aren't as
+        silly as they sound. Sometimes pipeline components have leading or
+        trailing cats for some reason. When these components are used in
+        pipelines, internal cats result. This optimisation will stop any
+        unnecessary cat processes from being created.
+
+    Consider the following unliner script:
+
+        def main {
+          cat $@ | cat | cat | cat | wc -l | cat | cat
+        }
+
+    Because of the spurious cat optimisations, running it like so won't
+    start a single cat process:
+
+        unliner lots-of-cats.unliner file.txt > output.txt
+
+    It is optimised to the following equivalent:
+
+        wc -l < file.txt > output.txt
 

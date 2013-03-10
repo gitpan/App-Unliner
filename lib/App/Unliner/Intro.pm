@@ -85,7 +85,7 @@ Now if you C<chmod +x log-report> you can run it directly.
 
 =head2 Defs
 
-The C<def main { }> isn't a special type of def except that it happens to be what is called when your program is invoked. You can create other defs and they can be invoked by your main def and other defs, kind of like subroutines (name precedent for def: CL, Python).
+The C<def main { }> isn't a special type of def except that it happens to be what is called when your program is invoked (precedent: C). You can create other defs and they can be invoked by your main def and other defs, kind of like subroutines (name precedent for def: lisp, Python).
 
 For example, we could move the C<awk> command into a C<ip-extractor> def, and the tallying logic into a C<tally> def:
 
@@ -267,10 +267,44 @@ Above is OK because C<n> is guaranteed to be an integer, but when using template
 
 In order to see the actual pipeline being run, you can set the environment variable C<UNLINER_DEBUG> and it will print some information to standard error:
 
-    $ UNLINER_DEBUG=1 unliner log-report access.log --filter-localhost
-    unliner: TMP: /tmp/GPtXapOfib
-    unliner: TMP: Not cleaning up temp directory because UNLINER_DEBUG specified
+    $ UNLINER_DEBUG=2 unliner log-report access.log --filter-localhost
+    unliner: TMP: Not cleaning up temp directory /tmp/GPtXapOfib because UNLINER_DEBUG >= 2
     unliner: CMD: grep 'GET /report.cgi' access.log | perl /tmp/GPtXapOfib/56ba8ad7a6431cbe6b64835c97e248d27a4234a0 | sort | uniq -c | sort -rn | head -n 5
 
 Note that when you write defs in languages like perl and python, scripts will be created in a temporary directory and executed from there.
 
+
+
+=head2 Optimisation
+
+Unliner does pipeline optimisation by default. Currently only spurious cat processes are optimised away.
+
+=over
+
+=item * Leading cats
+
+If a pipeline begins with a cat of no arguments, that cat is removed and no cat process is created. If a pipeline begins with a cat of exactly one argument, then that file is opened and dup2()ed to STDIN.
+
+=item * Trailing cats
+
+If a pipeline ends with a trailing cat, that cat is removed unless STDOUT is a terminal. Trailing cats are useful to prevent a program from doing special terminal formatting things like adding ANSI colours.
+
+=item * Internal cats
+
+All internal cats with no arguments are removed. Such cats aren't as silly as they sound. Sometimes pipeline components have leading or trailing cats for some reason. When these components are used in pipelines, internal cats result. This optimisation will stop any unnecessary cat processes from being created.
+
+=back
+
+Consider the following unliner script:
+
+    def main {
+      cat $@ | cat | cat | cat | wc -l | cat | cat
+    }
+
+Because of the spurious cat optimisations, running it like so won't start a single cat process:
+
+    unliner lots-of-cats.unliner file.txt > output.txt
+
+It is optimised to the following equivalent:
+
+    wc -l < file.txt > output.txt
