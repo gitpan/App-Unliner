@@ -2,17 +2,22 @@ package App::Unliner;
 
 use common::sense;
 
-our $VERSION = '0.011';
+our $VERSION = '0.020';
 
 1;
 
 
+__END__
+
+=encoding utf-8
 
 =head1 NAME
 
 App::Unliner - Untangle your unix pipeline one-liners
 
 =head1 SYNOPSIS
+
+Unliner is a scripting language and toolset for refactoring and developing unix one-liners.
 
 B<Note>: This page is a high-level overview of unliner. For an introduction and manual, see L<App::Unliner::Intro>.
 
@@ -63,6 +68,6 @@ Doug Hoyte, C<< <doug@hcsw.org> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2012-2013 Doug Hoyte.
+Copyright 2012-2014 Doug Hoyte.
 
 This module is licensed under the same terms as perl itself.

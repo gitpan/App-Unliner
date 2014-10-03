@@ -73,19 +73,21 @@ To turn your one-liner into an unliner just wrap a C<def main { }> around it lik
 
 If you save this in the file C<log-report> then your unliner program can be invoked with this command:
 
-    $ unliner log-report
+    $ unliner log-report < input.txt
 
 You could also put a L<shebang line|https://en.wikipedia.org/wiki/Shebang_(Unix)> at the top of your script:
 
     #!/usr/bin/env unliner
 
-Now if you C<chmod +x log-report> you can run it directly.
+Now if you C<chmod +x log-report> you can run it directly:
+
+    $ ./log-report < input.txt
 
 
 
 =head2 Defs
 
-The C<def main { }> isn't a special type of def except that it happens to be what is called when your program is invoked (precedent: C). You can create other defs and they can be invoked by your main def and other defs, kind of like subroutines (name precedent for def: lisp, Python).
+The C<def main { }> isn't a special type of def except that it happens to be what is called when your program is invoked. You can create other defs and they can be invoked by your main def and other defs, kind of like subroutines.
 
 For example, we could move the C<awk> command into a C<ip-extractor> def, and the tallying logic into a C<tally> def:
 
@@ -121,11 +123,11 @@ Now we can pass in a log file argument to our program (otherwise it will read in
 
     $ unliner log-report access.log
 
-Note that $@ escapes whitespace like bourne shell's C<"$@">. Actually it just passes the argument array untouched through to the process (grep in this case) so the arguments can contain any characters. The bourne equivalent of unquoted C<$@> and C<$*> are not supported because they cause way too many bugs (use templates below if you need to do this).
+Note that $@ escapes whitespace like bourne shell's C<"$@">. Actually it just passes the argument array untouched through to the process (grep in this case) so the arguments can contain any characters. The bourne equivalent of unquoted C<$@> and C<$*> are not supported because they cause way too many bugs (use templates if you need to do this).
 
-We can parameterise other aspects of the unliner program too. For example, let's suppose we wanted to control the number of lines that are included in the report. To do this we add a "prototype":
+We can parameterise other aspects of the unliner program too. For example, suppose you wanted to control the number of lines that are included in the report. To do this add a "prototype":
 
-    def main(head|h=i) {
+    def main(head|h=i, junkarg=s) {
       grep "GET /report.cgi" $@ | ip-extractor | tally | head -n $head
     }
 
@@ -133,23 +135,23 @@ The prototype indicates that the main def requires arguments. Since the main def
 
     $ unliner log-report access.log --head 5
 
-C<head|h=i> is a L<Getopt::Long> argument definition. It means that the official name of this argument is C<head>, that there is a single-dash alias C<h>, and that the argument is required to be an integer number. Because C<h> is an alias we could also use that as the argument:
+C<head|h=i> is a L<Getopt::Long> argument definition. It means that the official name of this argument is C<head>, that there is a single-dash alias C<h>, and that the argument's "type" is required to be an integer. Because C<h> is an alias we could also use that as the argument:
 
     $ unliner log-report access.log -h 5
 
 However, if you forget to add one of these arguments, the head process will die with an error like C<head: : invalid number of lines>.
 
-In order to have a default value for a paramater, you put parentheses around the argument definition followed by the default value (precedent: lisp):
+Other common L<GetOpt::Long> argument types are string (ie C<hostname|h=s>) and boolean on/off switches that require no argument (ie C<flag|f>). 
+
+In order to have a default value for a parameter, you put parentheses around the argument definition followed by the default value (just like lisp):
 
     def main((head|h=i 5)) {
       grep "GET /report.cgi" $@ | ip-extractor | tally | head -n $head
     }
 
-Environment variables are also available so C<$HOME> and such will work.
+None of these variables need to be quoted. They are always passed verbatim to the underlying command. If you do quote them, be aware that string interpolation is not implemented (use templates for that).
 
-None of these variables need to be quoted. They are always passed verbatim to the underlying command.
-
-Defs internal to your program accept arguments in exactly the same way:
+Defs internal to your program accept arguments in exactly the same way. You can think of internal defs as being their own mini command-line programs:
 
     def main {
       grep "GET /report.cgi" $@ | ip-extractor | tally | my-head -n 5
@@ -160,15 +162,43 @@ Defs internal to your program accept arguments in exactly the same way:
     }
 
 
+=head2 Argument pass-through and environment variables
+
+Normally if you pass an argument into a def (from the command line or from another def) that isn't listed in the prototype, an "Unknown option" error will be thrown. This is the default L<Getopt::Long> behaviour. If you wish to suppress this error and leave unknown options in the argument list, you can use the C<pass-through> def modifier like so:
+
+    def main : pass-through {
+      my-head $@
+    }
+
+    def my-head(count=i) {
+      head -n $count
+    }
+
+C<pass-through> simply sets the C<pass_through> option of L<Getopt::Long>.
+
+Environment variables that were given to the unliner process are present in your scripts as variables too. For example, this does what you'd expect:
+
+    def main {
+      echo $PATH
+    }
+
+But note that interpolating variables isn't (yet?) supported so C<echo "$PATH:/opt/bin"> won't work (use templates for that -- see below).
+
+There is a def modifier called C<env> that allows you to install arguments into environment variables while invoking the def. This is useful for languages like C<perl> where access to environment variables is easier than parsing an argument list:
+
+    def main((name=s 'Anonymous')) : perl : env {
+      print "Hello, $ENV{name}\n";
+    }
+
 
 
 
 
 =head2 Def Modifiers
 
-The contents of all the defs we've seen so far are in a custom unliner language called B<Shell>. C<: sh> is redundant because Shell is the default language.
+The contents of all the defs we've seen so far are in a custom unliner language called B<Shell>. You can add it if you want, but the C<: sh> def modifier is redundant because Shell is the default language.
 
-Shell is mostly like bourne shell/bash but a little bit different. The differences are described in the distribution's TODO file. Some differences are deliberate and some are just features that haven't been implemented yet. One difference is that unliner uses perl-style backslashed single quotes in single quoted string literals, not bourne shell-style (if you don't know what the bourne shell-style is, consider yourself lucky).
+Shell is mostly like bourne shell/bash but a little bit different. The differences are described in the distribution's TODO file. Some differences are deliberate and some are just features that haven't been implemented yet. One difference is that unliner uses perl-style backslashed single quotes in single quoted string literals, not bourne shell-style. If you don't know what the bourne shell-style is, consider yourself lucky.
 
 Def modifiers can be used to change how the def body is interpreted by changing the language to something other than Shell. Modifiers go in between the def name/prototype and the body. One language modifier that can be used is C<perl>. It causes the def body to be interpreted as perl code. For example:
 
@@ -203,7 +233,7 @@ Another supported language is python:
 
 Note that python is very noisy when it receives a SIGPIPE so polite pipeline components should manually catch it and then exit silently.
 
-A general-purpose "language" is exec. It is useful for pipeline components using programs that there are no custom languages for. For instance, the following defs are equivalent:
+A general-purpose "language" is exec. It is useful for running any command on your system, even when there are no such custom languages. As an example of exec usage, the following defs are equivalent:
 
     def second-column {
       awk -F, '{ print $2 }'
@@ -250,7 +280,7 @@ We can now enable this option from the command line:
 
     $ unliner log-report access.log --filter-localhost
 
-A grep process wil only be created if the C<--filter-localhost> option is passed in.
+A grep process will only be created if the C<--filter-localhost> option is passed in.
 
 Remember that templates are processed as strings before the language even sees them. For example, here is how you could take advantage of the head "negative number" trick:
 
@@ -258,7 +288,10 @@ Remember that templates are processed as strings before the language even sees t
       head -[% n %]
     }
 
-Above is OK because C<n> is guaranteed to be an integer, but when using templates always be careful about escaping or sanitising values.
+B<When using templates always be careful about escaping or sanitising values.>
+
+The above example is OK because C<n> is guaranteed to be an integer. 
+
 
 
 
@@ -305,6 +338,27 @@ Because of the spurious cat optimisations, running it like so won't start a sing
 
     unliner lots-of-cats.unliner file.txt > output.txt
 
-It is optimised to the following equivalent:
+It will be optimised to this equivalent command:
 
     wc -l < file.txt > output.txt
+
+
+
+=head1 SEE ALSO
+
+L<App::Unliner>
+
+L<unliner>
+
+L<Unliner github repo|https://github.com/hoytech/unliner>
+
+
+=head1 AUTHOR
+
+Doug Hoyte, C<< <doug@hcsw.org> >>
+
+=head1 COPYRIGHT & LICENSE
+
+Copyright 2012-2014 Doug Hoyte.
+
+This module is licensed under the same terms as perl itself.

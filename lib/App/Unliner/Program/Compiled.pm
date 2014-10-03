@@ -129,38 +129,41 @@ sub optimise {
 
   ## Leading cat pass
 
-  my $first_command = $commands->[0]->{shell_arg};
+  if (@$commands > 1) {
 
-  if ($first_command->[0] eq 'cat') {
-    if (@$first_command == 1) {
-      debug_log("OPT: optimised away empty leading cat");
-      shift @$commands;
-    }
-    if (@$first_command == 2) {
-      my $file = $first_command->[1];
-      debug_log("OPT: optimised away leading cat, opening file '$file' as STDIN");
-      if (!open(STDIN, '<', $file)) {
-        say STDERR "cat: $file: No such file or directory";
-        exit(1);
+    my $first_command = $commands->[0]->{shell_arg};
+
+    if ($first_command->[0] eq 'cat') {
+      if (@$first_command == 1) {
+        debug_log("OPT: optimised away empty leading cat");
+        shift @$commands;
       }
-      shift @$commands;
+      if (@$first_command == 2) {
+        my $file = $first_command->[1];
+        debug_log("OPT: optimised away leading cat, opening file '$file' as STDIN");
+        if (!open(STDIN, '<', $file)) {
+          say STDERR "cat: $file: No such file or directory";
+          exit(1);
+        }
+        shift @$commands;
+      }
     }
-  }
 
 
-  ## Trailing cat pass
+    ## Trailing cat pass
 
-  my $last_command = $commands->[-1]->{shell_arg};
+    my $last_command = $commands->[-1]->{shell_arg};
 
-  if ($last_command->[0] eq 'cat' && @$last_command == 1) {
-    if (-t STDOUT) {
-      debug_log("OPT: did *NOT* optimise away trailing cat because STDOUT is a terminal");
-    } else {
-      debug_log("OPT: optimised away trailing cat");
-      pop @$commands;
+    if ($last_command->[0] eq 'cat' && @$last_command == 1) {
+      if (-t STDOUT) {
+        debug_log("OPT: did *NOT* optimise away trailing cat because STDOUT is a terminal");
+      } else {
+        debug_log("OPT: optimised away trailing cat");
+        pop @$commands;
+      }
     }
-  }
 
+  }
 
 
   $self->{compiled_commands} = $commands;
@@ -204,6 +207,8 @@ sub execute {
       POSIX::dup2(fileno($w), 1) || die "dup2(,1) $!" unless $command == $commands->[-1];
 
       my @exec_args = @{$command->{shell_arg}};
+
+      $ENV{$_} = $command->{env}->{$_} foreach (keys %{$command->{env}});
 
       exec(@exec_args);
       die "couldn't exec $exec_args[0]: $!";
